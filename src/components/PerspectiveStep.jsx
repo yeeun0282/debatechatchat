@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Users, ArrowRight, ArrowLeft, Loader2, Target, Scale } from 'lucide-react';
-import { fetchPerspectives } from '../services/aiService';
-import { exampleIssues } from '../data/exampleIssues';
+import { Users, ArrowRight, ArrowLeft, Loader2, Target, Scale, MessageCircle, AlertCircle } from 'lucide-react';
+import { generatePerspectives } from '../services/aiService';
 
 const PerspectiveStep = ({ session, updateSession, onNext, onPrev }) => {
   const [loading, setLoading] = useState(false);
@@ -13,10 +12,14 @@ const PerspectiveStep = ({ session, updateSession, onNext, onPrev }) => {
   useEffect(() => {
     const loadPerspectives = async () => {
       setLoading(true);
-      const issueObj = exampleIssues.find(i => i.title === session.issue);
-      const issueId = issueObj ? issueObj.id : "custom";
-      const fetchedData = await fetchPerspectives(issueId, session.studentClaim);
+      const fetchedData = await generatePerspectives(session);
       setData(fetchedData);
+      
+      // Update session with new questions if they aren't already answered
+      if (fetchedData.reflectionQuestions && !reflection.similarGroup) {
+        // We just keep the questions in state, don't necessarily need to save them if they are static,
+        // but they can be dynamic. Let's just use them for labels.
+      }
       setLoading(false);
     };
     loadPerspectives();
@@ -42,76 +45,92 @@ const PerspectiveStep = ({ session, updateSession, onNext, onPrev }) => {
           다양한 관점 살펴보기
         </h2>
         <p className="text-slate-500 mt-2">
-          나와 다른 입장에 있는 사람들은 어떤 생각을 할지 살펴보고 시야를 넓혀보세요.
+          AI가 분석한 다양한 이해관계자의 입장을 살펴보고 시야를 넓혀보세요.
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-indigo-600">
             <Loader2 className="w-12 h-12 animate-spin mb-4" />
             <p className="font-medium">다양한 이해관계자의 입장을 분석하는 중입니다...</p>
           </div>
         ) : data ? (
-          <div className="space-y-8">
+          <div className="space-y-8 max-w-4xl mx-auto">
+            
             {/* Card 1: 비슷한 관점 */}
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
-              <h3 className="font-bold text-emerald-800 mb-2 flex items-center gap-2">
-                <Target className="w-5 h-5" /> 내 의견과 비슷한 관점
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 shadow-sm">
+              <h3 className="font-bold text-emerald-800 mb-3 flex items-center gap-2 text-lg">
+                <Target className="w-6 h-6" /> 내 의견과 비슷한 관점
               </h3>
-              <p className="text-emerald-900 text-sm">
-                네 의견은 이 쟁점에서 <strong className="bg-emerald-200 px-1 rounded">{data.similarGroup}</strong>의 입장과 비슷해 보여. 이들은 주로 이 쟁점에서 중요한 가치를 보호하려 해.
+              <p className="text-emerald-900 leading-relaxed">
+                네 의견은 주로 <strong className="bg-emerald-200 px-2 py-0.5 rounded text-emerald-950">{data.similarPerspective?.group}</strong>의 입장과 비슷해 보여. 
+                이들은 <span className="underline decoration-emerald-400 font-bold">{data.similarPerspective?.importantValue}</span>을(를) 중요하게 생각하며, {data.similarPerspective?.explanation}
               </p>
             </div>
 
             {/* Card 2: 다른 이해관계자들 */}
             <div>
-              <h3 className="font-bold text-lg text-slate-800 mb-4">다른 이해관계자들의 입장</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {data.stakeholders.map((p, idx) => (
-                  <div key={idx} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                    <div className="flex justify-between items-start mb-3">
-                      <h4 className="font-bold text-indigo-700 flex items-center gap-2">
-                        <span className="text-xl">👤</span> {p.role}
+              <h3 className="font-bold text-xl text-slate-800 mb-4">다양한 이해관계자의 입장</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {data.stakeholders?.map((p, idx) => (
+                  <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-4">
+                      <h4 className="font-bold text-indigo-700 flex items-center gap-2 text-lg">
+                        <span className="text-2xl">👤</span> {p.name}
                       </h4>
-                      <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">
-                        중요 가치: {p.value}
+                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+                        핵심 가치: {p.importantValue}
                       </span>
                     </div>
                     <div className="space-y-3 text-sm">
-                      <p className="bg-indigo-50 p-3 rounded-lg text-slate-800 font-medium">"{p.view}"</p>
-                      <p className="text-slate-600"><strong className="text-slate-700">이유:</strong> {p.reason}</p>
-                      <p className="text-slate-600"><strong className="text-slate-700">걱정하는 점:</strong> {p.concern}</p>
+                      <p className="bg-slate-50 p-3 rounded-xl text-slate-800 font-bold border border-slate-100 leading-relaxed">
+                        "{p.claim}"
+                      </p>
+                      <p className="text-slate-600 flex gap-2">
+                        <MessageCircle className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                        <span><strong className="text-slate-700">이유:</strong> {p.reason}</span>
+                      </p>
+                      <p className="text-rose-600 flex gap-2">
+                        <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                        <span><strong className="text-rose-700">우려:</strong> {p.concern}</span>
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Card 3: 다른 관점 */}
-              <div className="bg-orange-50 border border-orange-200 rounded-xl p-5">
-                <h3 className="font-bold text-orange-800 mb-3">내 입장과 다른 주장</h3>
-                <ul className="list-disc list-inside space-y-2 text-sm text-orange-900">
-                  {data.opposingViews.map((view, i) => (
-                    <li key={i}>{view}</li>
+              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6 shadow-sm">
+                <h3 className="font-bold text-orange-800 mb-4 text-lg">내 입장과 다른 생각들</h3>
+                <div className="space-y-4">
+                  {data.differentViews?.map((view, i) => (
+                    <div key={i} className="bg-white/60 p-4 rounded-xl border border-orange-100">
+                      <p className="font-bold text-orange-900 mb-1">{view.viewpoint}</p>
+                      <p className="text-sm text-orange-800">{view.whyTheyThinkSo}</p>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
 
               {/* Card 4: 충돌하는 가치 */}
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-5">
-                <h3 className="font-bold text-purple-800 mb-3 flex items-center gap-2">
-                  <Scale className="w-5 h-5" /> 충돌하는 가치
+              <div className="bg-purple-50 border border-purple-200 rounded-2xl p-6 shadow-sm">
+                <h3 className="font-bold text-purple-800 mb-4 flex items-center gap-2 text-lg">
+                  <Scale className="w-6 h-6" /> 충돌하는 가치
                 </h3>
-                <div className="space-y-2">
-                  {data.valueConflicts.map((conflict, i) => {
-                    const [v1, v2] = conflict.split('vs');
+                <div className="space-y-3">
+                  {data.valueConflicts?.map((conflict, i) => {
+                    const parts = conflict.values.split('vs');
                     return (
-                      <div key={i} className="flex items-center justify-center gap-2 bg-white p-2 rounded-lg border border-purple-100">
-                        <span className="font-bold text-purple-700">{v1?.trim()}</span>
-                        <span className="text-xs text-slate-400 font-bold">VS</span>
-                        <span className="font-bold text-rose-600">{v2?.trim()}</span>
+                      <div key={i} className="flex flex-col gap-2">
+                        <div className="flex items-center justify-center gap-3 bg-white py-3 px-4 rounded-xl border border-purple-100 shadow-sm">
+                          <span className="font-black text-indigo-600 text-center flex-1">{parts[0]?.trim()}</span>
+                          <span className="text-xs font-black text-slate-300 px-2 py-1 bg-slate-50 rounded-lg">VS</span>
+                          <span className="font-black text-rose-600 text-center flex-1">{parts[1]?.trim() || "반대 가치"}</span>
+                        </div>
+                        <p className="text-xs text-purple-700 text-center px-4 leading-relaxed">{conflict.explanation}</p>
                       </div>
                     );
                   })}
@@ -119,49 +138,50 @@ const PerspectiveStep = ({ session, updateSession, onNext, onPrev }) => {
               </div>
             </div>
             
-            <hr className="border-slate-200" />
+            <hr className="border-slate-200 my-8" />
             
             {/* Student Inputs */}
-            <div className="space-y-6">
-              <h3 className="font-bold text-xl text-slate-800">나의 생각 정리하기</h3>
+            <div className="bg-white border-2 border-indigo-100 rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
+              <h3 className="font-black text-2xl text-slate-800 mb-6 flex items-center gap-2">
+                <Target className="text-primary w-6 h-6" /> 나의 생각 정리하기
+              </h3>
               
               <div>
-                <label className="block font-bold text-slate-700 text-sm mb-2">1. 내 의견과 비슷하다고 느낀 이해관계자 또는 집단은 누구인가요?</label>
+                <label className="block font-bold text-slate-700 text-sm mb-2">
+                  1. {data.reflectionQuestions?.[0] || "내 의견과 비슷하다고 느낀 이해관계자 또는 집단은 누구인가요?"}
+                </label>
                 <input 
                   type="text" 
-                  className="w-full p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary outline-none"
+                  className="w-full p-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-primary outline-none transition-all"
                   value={reflection.similarGroup || ""}
                   onChange={(e) => handleChange('similarGroup', e.target.value)}
+                  placeholder="예: 학부모 및 교사 그룹과 비슷한 것 같습니다."
                 />
               </div>
               
               <div>
-                <label className="block font-bold text-slate-700 text-sm mb-2">2. 처음에는 생각하지 못했던 관점은 무엇인가요?</label>
+                <label className="block font-bold text-slate-700 text-sm mb-2">
+                  2. {data.reflectionQuestions?.[1] || "처음에는 생각하지 못했던 관점은 무엇인가요?"}
+                </label>
                 <textarea 
                   rows="2"
-                  className="w-full p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary outline-none resize-none"
+                  className="w-full p-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-primary outline-none resize-none transition-all"
                   value={reflection.newPerspective || ""}
                   onChange={(e) => handleChange('newPerspective', e.target.value)}
+                  placeholder="예: 자유권 침해 문제에 대해 미처 생각하지 못했습니다."
                 ></textarea>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 text-sm mb-2">3. 다른 관점 중 이해되거나 일부 받아들일 수 있는 부분은 무엇인가요?</label>
+                <label className="block font-bold text-slate-700 text-sm mb-2">
+                  3. {data.reflectionQuestions?.[2] || "다른 관점 중 이해되거나 일부 받아들일 수 있는 부분은 무엇인가요?"}
+                </label>
                 <textarea 
                   rows="2"
-                  className="w-full p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary outline-none resize-none"
+                  className="w-full p-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-primary outline-none resize-none transition-all"
                   value={reflection.acceptedView || ""}
                   onChange={(e) => handleChange('acceptedView', e.target.value)}
-                ></textarea>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 text-sm mb-2">4. 이 관점을 고려했을 때 내 주장을 어떻게 보완할 수 있을까요?</label>
-                <textarea 
-                  rows="2"
-                  className="w-full p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary outline-none resize-none"
-                  value={reflection.improvedClaim || ""}
-                  onChange={(e) => handleChange('improvedClaim', e.target.value)}
+                  placeholder="예: 일률적인 제한이 반발을 부를 수 있다는 점은 동의합니다."
                 ></textarea>
               </div>
             </div>
