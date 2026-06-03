@@ -14,13 +14,22 @@ const EvidenceStep = ({ session, updateSession, onNext, onPrev }) => {
   const { evidence } = session;
   const [hasData, setHasData] = useState(evidence.sourceTitle ? true : false);
 
+  // types is now an array for multi-select
+  const selectedTypes = Array.isArray(evidence.types)
+    ? evidence.types
+    : evidence.type
+      ? [evidence.type]
+      : [];
+
+  const toggleType = (typeId) => {
+    const next = selectedTypes.includes(typeId)
+      ? selectedTypes.filter((t) => t !== typeId)
+      : [...selectedTypes, typeId];
+    updateSession({ evidence: { ...evidence, types: next, type: next[0] || "" } });
+  };
+
   const handleChange = (field, value) => {
-    updateSession({
-      evidence: {
-        ...evidence,
-        [field]: value
-      }
-    });
+    updateSession({ evidence: { ...evidence, [field]: value } });
   };
 
   return (
@@ -37,29 +46,42 @@ const EvidenceStep = ({ session, updateSession, onNext, onPrev }) => {
 
       <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
         <div>
-          <label className="block font-bold text-slate-800 mb-4 text-lg">어떤 유형의 근거를 사용할까요?</label>
+          <label className="block font-bold text-slate-800 mb-1 text-lg">어떤 유형의 근거를 사용할까요?</label>
+          <p className="text-xs text-slate-400 mb-4">여러 개 선택 가능합니다.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {evidenceTypes.map((type) => (
-              <div 
-                key={type.id}
-                onClick={() => handleChange('type', type.id)}
-                className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col h-full ${
-                  evidence.type === type.id 
-                    ? 'border-primary bg-indigo-50 shadow-sm' 
-                    : 'border-slate-200 hover:border-indigo-200 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold text-slate-800">{type.id}</h3>
-                  {evidence.type === type.id && <CheckCircle2 className="w-5 h-5 text-primary" />}
+            {evidenceTypes.map((type) => {
+              const isSelected = selectedTypes.includes(type.id);
+              return (
+                <div
+                  key={type.id}
+                  onClick={() => toggleType(type.id)}
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col h-full ${
+                    isSelected
+                      ? 'border-primary bg-indigo-50 shadow-sm'
+                      : 'border-slate-200 hover:border-indigo-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-bold text-slate-800">{type.id}</h3>
+                    {isSelected && <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />}
+                  </div>
+                  <p className="text-xs text-slate-500 mb-2">{type.desc}</p>
+                  <p className="text-xs font-medium text-indigo-600 mt-auto bg-white p-2 rounded border border-indigo-100">
+                    말할 때: "{type.prefix}"
+                  </p>
                 </div>
-                <p className="text-xs text-slate-500 mb-2">{type.desc}</p>
-                <p className="text-xs font-medium text-indigo-600 mt-auto bg-white p-2 rounded border border-indigo-100">
-                  말할 때: "{type.prefix}"
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
+          {selectedTypes.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {selectedTypes.map((t) => (
+                <span key={t} className="text-xs font-bold bg-indigo-600 text-white px-3 py-1 rounded-full">
+                  ✓ {t}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">

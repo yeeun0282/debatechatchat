@@ -2,7 +2,7 @@ import React from 'react';
 import { PenTool, ArrowRight, ArrowLeft } from 'lucide-react';
 
 const PositionStep = ({ session, updateSession, onNext, onPrev }) => {
-  const { positionScale, studentClaim, studentReason } = session;
+  const { positionScale, studentClaim, studentReason, issue } = session;
 
   const handleScaleChange = (val) => {
     updateSession({ positionScale: val });
@@ -26,6 +26,12 @@ const PositionStep = ({ session, updateSession, onNext, onPrev }) => {
         <p className="text-slate-500 mt-2">
           선택한 쟁점에 대해 나의 생각은 어떤지 간단히 정리해 보세요.
         </p>
+        {issue && (
+          <div className="mt-4 flex items-start gap-2 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3">
+            <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex-shrink-0 mt-0.5">오늘의 쟁점</span>
+            <span className="font-bold text-indigo-800 text-sm leading-snug">{issue}</span>
+          </div>
+        )}
       </div>
 
       <div className="p-6 md:p-8 flex-1 space-y-8">
